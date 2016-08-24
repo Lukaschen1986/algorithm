@@ -1,5 +1,6 @@
 rm(list = ls());gc()
 
+# func
 data_divide <- function(df, divide_1 = 0.8){
           df <- df[sample(1:nrow(df), nrow(df)), ]
           idx <- sample(1:nrow(df), nrow(df)*divide_1)
@@ -11,6 +12,20 @@ data_divide <- function(df, divide_1 = 0.8){
 
 tanh <- function(x){2/(1+exp(-x))-1}
 
+logit_reg <- function(n_prmtr, w_prmtr, e_in, yita, y_1, y_2, data){
+          n <- n_prmtr; p <- ncol(data)
+          w_iter <- rbind(w_prmtr[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
+          
+          for(i in 2:nrow(w_iter)){
+                    w_iter[i,] <- w_iter[i-1,] - yita*t(-(y_1-y_2)*(2*exp(-data%*%w_iter[i-1,])/(1+exp(-data%*%w_iter[i-1,]))^2))%*%data
+                    e_in[i] <- sum((y_1-tanh(data%*%w_iter[i,]))^2)/2
+                    if(round(e_in[i],7) == round(e_in[i-1],7)){break}
+          }
+          res <- list(w_iter = w_iter, e_in = e_in)
+          return(res)
+}
+
+# data
 df <- swiss
 df$Fertility2 <- ifelse(df$Fertility >= mean(df$Fertility), 1, -1)
 df$Fertility <- NULL
@@ -19,12 +34,13 @@ mydata <- data_divide(df = df, divide_1 = 0.7)
 train <- mydata$train
 test <- mydata$test
 
-X_train <- cbind(b0 = c(1), scale(train[,1:10]))
-y_train <- train[,11]
+X_train <- cbind(b0 = c(1), scale(train[,1:5]))
+y_train <- train[,6]
 
-X_test <- cbind(b0 = c(1), scale(test[,1:10]))
-y_test <- test[,11]
+X_test <- cbind(b0 = c(1), scale(test[,1:5]))
+y_test <- test[,6]
 
+# BPNN
 bpnn_func <- function(X_train, y_train, X_test, y_test, k){
           w1 <- c(); w2 <- c(); w3 <- c(); w4 <- c(); w5 <- c(); w6 <- c(); y_hat <- c()
           sse_train <- c(); accu_train <- c(); sse_test <- c(); accu_test <- c()
@@ -48,17 +64,9 @@ bpnn_func <- function(X_train, y_train, X_test, y_test, k){
                     y_hat <- tanh(layer%*%w6[j,]) # 3
                     
                     # 4.w6_update
-                    n <- 50000; p <- ncol(layer)
-                    w6_iter <- rbind(w6[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
-                    e_in <- c(30); yita <- 0.001
-                    
-                    for(i in 2:nrow(w6_iter)){
-                              w6_iter[i,] <- w6_iter[i-1,] - yita*t(-(y_train-y_hat)*(2*exp(-layer%*%w6_iter[i-1,])/(1+exp(-layer%*%w6_iter[i-1,]))^2))%*%layer
-                              e_in[i] <- sum((y_train-tanh(layer%*%w6_iter[i,]))^2)/2
-                              if(round(e_in[i],7) == round(e_in[i-1],7)){break}
-                    }
-                    plot(e_in)
-                    w6 <- rbind(w6, w6_iter[which.min(e_in),])
+                    res6 <- logit_reg(n_prmtr = 50000, w_prmtr = w6, e_in = 30, yita = 0.001, y_1 = y_train, y_2 = y_hat, data = layer)
+                    plot(res6$e_in)
+                    w6 <- rbind(w6, res6$w_iter[which.min(res6$e_in),])
                     
                     # 5.hidden_update
                     d_hddn <- (-(y_train-y_hat)*(2*exp(-layer%*%w6[j+1,])/(1+exp(-layer%*%w6[j+1,]))^2))%*%w6[j+1,]
@@ -70,69 +78,29 @@ bpnn_func <- function(X_train, y_train, X_test, y_test, k){
                     d_hddn5 <- d_hddn[,6]
                     
                     # w1_update
-                    n <- 50000; p <- ncol(X_train)
-                    w1_iter <- rbind(w1[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
-                    e_in <- c(30); yita <- 0.001
-                    
-                    for(i in 2:nrow(w1_iter)){
-                              w1_iter[i,] <- w1_iter[i-1,] - yita*t(-(hddn1-d_hddn1)*(2*exp(-X_train%*%w1_iter[i-1,])/(1+exp(-X_train%*%w1_iter[i-1,]))^2))%*%X_train
-                              e_in[i] <- sum((hddn1-tanh(X_train%*%w1_iter[i,]))^2)/2
-                              if(round(e_in[i],7) == round(e_in[i-1],7)){break}
-                    }
-                    plot(e_in)
-                    w1 <- rbind(w1, w1_iter[which.min(e_in),])
+                    res1 <- logit_reg(n_prmtr = 50000, w_prmtr = w1, e_in = 30, yita = 0.001, y_1 = hddn1, y_2 = d_hddn1, data = X_train)
+                    plot(res1$e_in)
+                    w1 <- rbind(w1, res1$w_iter[which.min(res1$e_in),])
                     
                     # 6.w2_update
-                    n <- 50000; p <- ncol(X_train)
-                    w2_iter <- rbind(w2[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
-                    e_in <- c(30); yita <- 0.001
-                    
-                    for(i in 2:nrow(w2_iter)){
-                              w2_iter[i,] <- w2_iter[i-1,] - yita*t(-(hddn2-d_hddn2)*(2*exp(-X_train%*%w2_iter[i-1,])/(1+exp(-X_train%*%w2_iter[i-1,]))^2))%*%X_train
-                              e_in[i] <- sum((hddn2-tanh(X_train%*%w2_iter[i,]))^2)/2
-                              if(round(e_in[i],7) == round(e_in[i-1],7)){break}
-                    }
-                    plot(e_in)
-                    w2 <- rbind(w2, w2_iter[which.min(e_in),])
+                    res2 <- logit_reg(n_prmtr = 50000, w_prmtr = w2, e_in = 30, yita = 0.001, y_1 = hddn2, y_2 = d_hddn2, data = X_train)
+                    plot(res2$e_in)
+                    w2 <- rbind(w2, res2$w_iter[which.min(res2$e_in),])
                     
                     # 6.w3_update
-                    n <- 50000; p <- ncol(X_train)
-                    w3_iter <- rbind(w3[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
-                    e_in <- c(30); yita <- 0.001
-                    
-                    for(i in 2:nrow(w3_iter)){
-                              w3_iter[i,] <- w3_iter[i-1,] - yita*t(-(hddn3-d_hddn3)*(2*exp(-X_train%*%w3_iter[i-1,])/(1+exp(-X_train%*%w3_iter[i-1,]))^2))%*%X_train
-                              e_in[i] <- sum((hddn3-tanh(X_train%*%w3_iter[i,]))^2)/2
-                              if(round(e_in[i],7) == round(e_in[i-1],7)){break}
-                    }
-                    plot(e_in)
-                    w3 <- rbind(w3, w3_iter[which.min(e_in),])
+                    res3 <- logit_reg(n_prmtr = 50000, w_prmtr = w3, e_in = 30, yita = 0.001, y_1 = hddn3, y_2 = d_hddn3, data = X_train)
+                    plot(res3$e_in)
+                    w3 <- rbind(w3, res3$w_iter[which.min(res3$e_in),])
                     
                     # 6.w4_update
-                    n <- 50000; p <- ncol(X_train)
-                    w4_iter <- rbind(w4[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
-                    e_in <- c(30); yita <- 0.001
-                    
-                    for(i in 2:nrow(w4_iter)){
-                              w4_iter[i,] <- w4_iter[i-1,] - yita*t(-(hddn4-d_hddn4)*(2*exp(-X_train%*%w4_iter[i-1,])/(1+exp(-X_train%*%w4_iter[i-1,]))^2))%*%X_train
-                              e_in[i] <- sum((hddn4-tanh(X_train%*%w4_iter[i,]))^2)/2
-                              if(round(e_in[i],7) == round(e_in[i-1],7)){break}
-                    }
-                    plot(e_in)
-                    w4 <- rbind(w4, w4_iter[which.min(e_in),])
+                    res4 <- logit_reg(n_prmtr = 50000, w_prmtr = w4, e_in = 30, yita = 0.001, y_1 = hddn4, y_2 = d_hddn4, data = X_train)
+                    plot(res4$e_in)
+                    w4 <- rbind(w4, res4$w_iter[which.min(res4$e_in),])
                     
                     # 6.w5_update
-                    n <- 50000; p <- ncol(X_train)
-                    w5_iter <- rbind(w5[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
-                    e_in <- c(30); yita <- 0.001
-                    
-                    for(i in 2:nrow(w5_iter)){
-                              w5_iter[i,] <- w5_iter[i-1,] - yita*t(-(hddn5-d_hddn5)*(2*exp(-X_train%*%w5_iter[i-1,])/(1+exp(-X_train%*%w5_iter[i-1,]))^2))%*%X_train
-                              e_in[i] <- sum((hddn5-tanh(X_train%*%w5_iter[i,]))^2)/2
-                              if(round(e_in[i],7) == round(e_in[i-1],7)){break}
-                    }
-                    plot(e_in)
-                    w5 <- rbind(w5, w5_iter[which.min(e_in),])
+                    res5 <- logit_reg(n_prmtr = 50000, w_prmtr = w5, e_in = 30, yita = 0.001, y_1 = hddn5, y_2 = d_hddn5, data = X_train)
+                    plot(res5$e_in)
+                    w5 <- rbind(w5, res5$w_iter[which.min(res5$e_in),])
                     
                     # 7.pred
                     y_pred <- tanh(cbind(b0 = c(1), 
@@ -157,12 +125,14 @@ bpnn_func <- function(X_train, y_train, X_test, y_test, k){
           }
           result_summary <- data.frame(sse_train = sse_train, accu_train = accu_train, sse_test = sse_test, accu_test = accu_test)
           best_k <- which.min(result_summary$sse_test)+1
-          res <- list(result_summary = result_summary, 
-                      best_w1 = w1[best_k,],
-                      best_w2 = w2[best_k,],
-                      best_w3 = w3[best_k,],
-                      best_w4 = w4[best_k,],
-                      best_w5 = w5[best_k,],
-                      best_w6 = w6[best_k,]) # 8
-          return(res)
+          res_final <- list(result_summary = result_summary, 
+                            best_w1 = w1[best_k,],
+                            best_w2 = w2[best_k,],
+                            best_w3 = w3[best_k,],
+                            best_w4 = w4[best_k,],
+                            best_w5 = w5[best_k,],
+                            best_w6 = w6[best_k,]) # 8
+          return(res_final)
 }
+
+sse_train; accu_train; sse_test; accu_test
