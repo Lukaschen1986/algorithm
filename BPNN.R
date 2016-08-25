@@ -29,7 +29,7 @@ y_test <- test[,6]
 bpnn_func <- function(X_train, y_train, X_test, y_test, k){
           tanh <- function(x){2/(1+exp(-x))-1}
           
-          logit_reg <- function(n_prmtr, w_prmtr, e_in, yita, y_1, y_2, data){
+          grdnt_dscnt <- function(n_prmtr, w_prmtr, e_in, yita, y_1, y_2, data){
                     n <- n_prmtr; p <- ncol(data)
                     w_iter <- rbind(w_prmtr[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
                     for(i in 2:nrow(w_iter)){
@@ -53,7 +53,7 @@ bpnn_func <- function(X_train, y_train, X_test, y_test, k){
           w6 <- rbind(w6, rnorm(n = 6, mean = 0, sd = 1))
           
           for(j in 1:k){
-                    # j = 5
+                    # j = 6
                     hddn1 <- tanh(X_train%*%w1[j,])
                     hddn2 <- tanh(X_train%*%w2[j,])
                     hddn3 <- tanh(X_train%*%w3[j,])
@@ -63,7 +63,7 @@ bpnn_func <- function(X_train, y_train, X_test, y_test, k){
                     y_hat <- tanh(layer%*%w6[j,]) # 3
                     
                     # 4.w6_update
-                    res6 <- logit_reg(n_prmtr = 50000, w_prmtr = w6, e_in = 1000, yita = 0.0001, y_1 = y_train, y_2 = y_hat, data = layer)
+                    res6 <- grdnt_dscnt(n_prmtr = 50000, w_prmtr = w6, e_in = 1000, yita = 0.0001, y_1 = y_train, y_2 = y_hat, data = layer)
                     # plot(res6$e_in[-1]); min(res6$e_in[-1]); which.min(res6$e_in[-1])+1
                     w6 <- rbind(w6, res6$w_iter[which.min(res6$e_in[-1])+1,])
                     
@@ -76,27 +76,27 @@ bpnn_func <- function(X_train, y_train, X_test, y_test, k){
                     d_hddn5 <- d_hddn[,6]
                     
                     # w1_update
-                    res1 <- logit_reg(n_prmtr = 50000, w_prmtr = w1, e_in = 1000, yita = 0.0001, y_1 = d_hddn1, y_2 = hddn1, data = X_train)
+                    res1 <- grdnt_dscnt(n_prmtr = 50000, w_prmtr = w1, e_in = 1000, yita = 0.0001, y_1 = d_hddn1, y_2 = hddn1, data = X_train)
                     # plot(res1$e_in[-1]); min(res1$e_in[-1]); which.min(res1$e_in[-1])+1
                     w1 <- rbind(w1, res1$w_iter[which.min(res1$e_in[-1])+1,])
                     
                     # 6.w2_update
-                    res2 <- logit_reg(n_prmtr = 50000, w_prmtr = w2, e_in = 1000, yita = 0.0001, y_1 = d_hddn2, y_2 = hddn2, data = X_train)
+                    res2 <- grdnt_dscnt(n_prmtr = 50000, w_prmtr = w2, e_in = 1000, yita = 0.0001, y_1 = d_hddn2, y_2 = hddn2, data = X_train)
                     # plot(res2$e_in[-1]); min(res2$e_in[-1]); which.min(res2$e_in[-1])+1
                     w2 <- rbind(w2, res2$w_iter[which.min(res2$e_in[-1])+1,])
                     
                     # 6.w3_update
-                    res3 <- logit_reg(n_prmtr = 50000, w_prmtr = w3, e_in = 1000, yita = 0.0001, y_1 = d_hddn3, y_2 = hddn3, data = X_train)
+                    res3 <- grdnt_dscnt(n_prmtr = 50000, w_prmtr = w3, e_in = 1000, yita = 0.0001, y_1 = d_hddn3, y_2 = hddn3, data = X_train)
                     # plot(res3$e_in[-1]); min(res3$e_in); which.min(res3$e_in[-1])+1
                     w3 <- rbind(w3, res3$w_iter[which.min(res3$e_in[-1])+1,])
                     
                     # 6.w4_update
-                    res4 <- logit_reg(n_prmtr = 50000, w_prmtr = w4, e_in = 1000, yita = 0.0001, y_1 = d_hddn4, y_2 = hddn4, data = X_train)
+                    res4 <- grdnt_dscnt(n_prmtr = 50000, w_prmtr = w4, e_in = 1000, yita = 0.0001, y_1 = d_hddn4, y_2 = hddn4, data = X_train)
                     # plot(res4$e_in[-1]); min(res4$e_in); which.min(res4$e_in[-1])+1
                     w4 <- rbind(w4, res4$w_iter[which.min(res4$e_in[-1])+1,])
                     
                     # 6.w5_update
-                    res5 <- logit_reg(n_prmtr = 50000, w_prmtr = w5, e_in = 1000, yita = 0.0001, y_1 = d_hddn5, y_2 = hddn5, data = X_train)
+                    res5 <- grdnt_dscnt(n_prmtr = 50000, w_prmtr = w5, e_in = 1000, yita = 0.0001, y_1 = d_hddn5, y_2 = hddn5, data = X_train)
                     # plot(res5$e_in[-1]); min(res5$e_in); which.min(res5$e_in[-1])+1
                     w5 <- rbind(w5, res5$w_iter[which.min(res5$e_in[-1])+1,])
                     
