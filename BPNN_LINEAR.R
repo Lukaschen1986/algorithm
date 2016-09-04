@@ -57,7 +57,7 @@ bpnn_func <- function(X_train, y_train, X_test, y_test, k){
                     hddn4 <- tanh(X_train%*%w4[j,])
                     hddn5 <- tanh(X_train%*%w5[j,])
                     layer <- cbind(b0 = c(1), hddn1, hddn2, hddn3, hddn4, hddn5) # 2
-                    y_hat <- layer%*%w6[j,] # 3
+                    # y_hat <- layer%*%w6[j,] # 3
                     
                     # 4.w6_update
                     w6 <- rbind(w6, t(solve(t(layer)%*%layer)%*%t(layer)%*%y_train))
