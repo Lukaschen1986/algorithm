@@ -2,10 +2,10 @@ rm(list = ls());gc()
 
 # func
 data_divide <- function(df, divide_1 = 0.8){
-          df <- df[sample(1:nrow(df), nrow(df)), ]
           idx <- sample(1:nrow(df), nrow(df)*divide_1)
           train <- df[idx,]
           test <- df[-idx,]
+          
           res <- list(train = train, test = test)
           return(res)
 }
@@ -15,25 +15,26 @@ df <- swiss
 df$Fertility2 <- ifelse(df$Fertility >= mean(df$Fertility), 1, -1)
 df$Fertility <- NULL
 
-mydata <- data_divide(df = df, divide_1 = 0.7)
+mydata <- data_divide(df = df, divide_1 = 0.8)
 train <- mydata$train
 test <- mydata$test
 
-X_train <- cbind(b0 = c(1), scale(train[,1:5]))
 y_train <- train[,6]
+X_train <- cbind(b0 = c(1), scale(train[,1:5]))
 
-X_test <- cbind(b0 = c(1), scale(test[,1:5]))
 y_test <- test[,6]
+X_test <- cbind(b0 = c(1), (test[,1:5]-apply(train[,1:5],2,mean))/apply(train[,1:5],2,sd))
+
 
 # BPNN
 bpnn_func <- function(X_train, y_train, X_test, y_test, k){
           tanh <- function(x){2/(1+exp(-x))-1}
-          
+          vctr_idnt <- function(x){x/sqrt(sum(x^2))}
           grdnt_dscnt <- function(n_prmtr, w_prmtr, e_in, yita, y_1, y_2, data){
                     n <- n_prmtr; p <- ncol(data)
                     w_iter <- rbind(w_prmtr[j,], matrix(data = rep(0,n*p), nrow = n, ncol = p, byrow = T))
                     for(i in 2:nrow(w_iter)){
-                              w_iter[i,] <- w_iter[i-1,] - yita*t(-(y_1-y_2)*(2*exp(-data%*%w_iter[i-1,])/(1+exp(-data%*%w_iter[i-1,]))^2))%*%data
+                              w_iter[i,] <- w_iter[i-1,] - yita*vctr_idnt(t(-(y_1-y_2)*(2*exp(-data%*%w_iter[i-1,])/(1+exp(-data%*%w_iter[i-1,]))^2))%*%data)
                               e_in[i] <- sum((y_1-tanh(data%*%w_iter[i,]))^2)/2
                               if(round(e_in[i],7) == round(e_in[i-1],7)){break}
                     }
